@@ -1,0 +1,20 @@
+#wrap-track-container {
+    margin-top: 10px;
+}
+
+.wrap-track-item {
+    margin-bottom: 10px;
+    padding: 8px;
+    background: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.wrap-track-item input[type="text"] {
+    width: 30%;
+    margin-right: 5px;
+}
+
+.wrap-track-item button {
+    vertical-align: middle;
+}
