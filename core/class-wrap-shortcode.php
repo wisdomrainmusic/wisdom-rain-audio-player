@@ -114,38 +114,59 @@ class WRAP_Shortcode {
 
         $this->enqueue_assets();
 
+        $player_id      = $post_id;
+        $playlist_title = get_the_title( $post_id );
+        $playlist_cover = has_post_thumbnail( $post_id )
+            ? get_the_post_thumbnail_url( $post_id, 'medium' )
+            : '';
+
         ob_start();
         ?>
-        <div class="wrap-player-container" data-player-id="<?php echo esc_attr( $post_id ); ?>">
+        <div class="wrap-player-container" data-player-id="<?php echo esc_attr( $player_id ); ?>">
 
-            <div class="wrap-player-header">
-                <?php if ( has_post_thumbnail( $post_id ) ) : ?>
-                    <img src="<?php echo esc_url( get_the_post_thumbnail_url( $post_id, 'medium' ) ); ?>" alt="">
+            <!-- Playlist Cover -->
+            <div class="wrap-player-cover">
+                <?php if ( ! empty( $playlist_cover ) ) : ?>
+                    <img src="<?php echo esc_url( $playlist_cover ); ?>" alt="<?php echo esc_attr__( 'Playlist Cover', 'wrap' ); ?>">
                 <?php endif; ?>
-                <h3><?php echo esc_html( get_the_title( $post_id ) ); ?></h3>
             </div>
 
-            <ul class="wrap-player-tracklist">
+            <!-- Playlist Info -->
+            <div class="wrap-player-info">
+                <?php if ( ! empty( $playlist_title ) ) : ?>
+                    <h4 class="wrap-player-title"><?php echo esc_html( $playlist_title ); ?></h4>
+                <?php endif; ?>
+
+                <!-- Progress Bar -->
+                <div class="wrap-player-progress"><span></span></div>
+            </div>
+
+            <!-- Controls Section -->
+            <div class="wrap-player-controls">
+                <select class="wrap-language-selector">
+                    <option value="en"><?php esc_html_e( 'English', 'wrap' ); ?></option>
+                    <option value="de"><?php esc_html_e( 'German', 'wrap' ); ?></option>
+                    <option value="tr"><?php esc_html_e( 'Turkish', 'wrap' ); ?></option>
+                </select>
+
+                <div class="wrap-controls">
+                    <button class="wrap-prev" type="button" aria-label="<?php esc_attr_e( 'Previous track', 'wrap' ); ?>">⏮</button>
+                    <button class="wrap-play" type="button" aria-label="<?php esc_attr_e( 'Play or pause', 'wrap' ); ?>">▶</button>
+                    <button class="wrap-next" type="button" aria-label="<?php esc_attr_e( 'Next track', 'wrap' ); ?>">⏭</button>
+                </div>
+            </div>
+
+            <!-- Audio Element -->
+            <audio preload="metadata"></audio>
+
+            <!-- Track List -->
+            <ul class="wrap-track-list">
                 <?php foreach ( $prepared_tracks as $track ) : ?>
-                    <li class="wrap-track-item"
-                        data-url="<?php echo esc_url( $track['url'] ); ?>"
-                        data-index="<?php echo esc_attr( $track['index'] ); ?>">
-                        <span class="wrap-track-title"><?php echo esc_html( $track['title'] ); ?></span>
-                        <?php if ( '' !== $track['duration'] ) : ?>
-                            <span class="wrap-track-duration"><?php echo esc_html( $track['duration'] ); ?></span>
-                        <?php endif; ?>
+                    <li class="wrap-track-item" data-url="<?php echo esc_url( $track['url'] ); ?>">
+                        <?php echo esc_html( $track['title'] ); ?>
                     </li>
                 <?php endforeach; ?>
             </ul>
-
-            <div class="wrap-controls">
-                <button class="wrap-prev" type="button" aria-label="<?php esc_attr_e( 'Previous track', 'wrap' ); ?>">⏮</button>
-                <button class="wrap-play" type="button" aria-label="<?php esc_attr_e( 'Play or pause', 'wrap' ); ?>">▶</button>
-                <button class="wrap-next" type="button" aria-label="<?php esc_attr_e( 'Next track', 'wrap' ); ?>">⏭</button>
-            </div>
-
-            <div class="wrap-progress"><div class="wrap-progress-bar"></div></div>
-            <audio preload="metadata" class="wrap-audio"></audio>
         </div>
         <?php
         return ob_get_clean();

@@ -111,9 +111,19 @@
 
       const playerId = root.dataset.playerId || "";
       const controls = root.querySelector(".wrap-controls");
+      const languageSelector = root.querySelector(".wrap-language-selector");
       const playBtn = root.querySelector(".wrap-play");
       const nextBtn = root.querySelector(".wrap-next");
       const prevBtn = root.querySelector(".wrap-prev");
+
+      if (languageSelector) {
+        languageSelector.addEventListener("change", (event) => {
+          const lang = event.target.value;
+          // eslint-disable-next-line no-console
+          console.log("Language changed:", lang);
+          // gelecekte dil bazlı filtreleme veya UI değişimi buradan yapılabilir
+        });
+      }
 
       let progressWrap = root.querySelector(".wrap-player-progress");
       if (!progressWrap) {
