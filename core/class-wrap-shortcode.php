@@ -4,25 +4,62 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class WRAP_Shortcode {
 
     public function register() {
-        add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend' ) );
         add_shortcode( 'wrap_player', array( $this, 'render_player' ) );
     }
 
-    public function enqueue_frontend() {
-        wp_enqueue_style(
-            'wrap-player-css',
-            WRAP_URL . 'assets/css/wrap-player.css',
-            array(),
-            '3.1'
-        );
+    private function enqueue_assets() {
+        $style_enqueued = false;
+        if ( wp_style_is( 'wrap-player', 'registered' ) ) {
+            wp_enqueue_style( 'wrap-player' );
+            $style_enqueued = true;
+        }
 
-        wp_enqueue_script(
-            'wrap-player-js',
-            WRAP_URL . 'frontend/wrap-player.js',
-            array(),
-            '3.1',
-            true
-        );
+        if ( ! $style_enqueued ) {
+            $candidates = array(
+                'assets/css/wrap-frontend.css',
+                'assets/css/wrap-player.css',
+            );
+
+            foreach ( $candidates as $css_rel ) {
+                $css_path = WRAP_PATH . $css_rel;
+                if ( file_exists( $css_path ) ) {
+                    wp_enqueue_style(
+                        'wrap-player',
+                        WRAP_URL . $css_rel,
+                        array(),
+                        filemtime( $css_path ) ?: '3.1'
+                    );
+                    break;
+                }
+            }
+        }
+
+        $script_enqueued = false;
+        if ( wp_script_is( 'wrap-player', 'registered' ) ) {
+            wp_enqueue_script( 'wrap-player' );
+            $script_enqueued = true;
+        }
+
+        if ( ! $script_enqueued ) {
+            $candidates = array(
+                'frontend/wrap-frontend.js',
+                'frontend/wrap-player.js',
+            );
+
+            foreach ( $candidates as $js_rel ) {
+                $js_path = WRAP_PATH . $js_rel;
+                if ( file_exists( $js_path ) ) {
+                    wp_enqueue_script(
+                        'wrap-player',
+                        WRAP_URL . $js_rel,
+                        array(),
+                        filemtime( $js_path ) ?: '3.1',
+                        true
+                    );
+                    break;
+                }
+            }
+        }
     }
 
     public function render_player( $atts ) {
@@ -74,6 +111,8 @@ class WRAP_Shortcode {
         if ( empty( $prepared_tracks ) ) {
             return '<p>' . esc_html__( 'No tracks found.', 'wrap' ) . '</p>';
         }
+
+        $this->enqueue_assets();
 
         ob_start();
         ?>
