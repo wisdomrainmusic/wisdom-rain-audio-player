@@ -1,162 +1,321 @@
-(function () {
-    function setupPlayer(container) {
-        const audio = container.querySelector('audio');
-        const tracks = Array.from(container.querySelectorAll('.wrap-track-item'));
-        const playBtn = container.querySelector('.wrap-play');
-        const nextBtn = container.querySelector('.wrap-next');
-        const prevBtn = container.querySelector('.wrap-prev');
+(() => {
+  const PLAYER_SELECTOR = ".wrap-player-container";
+  const STORAGE_PREFIX = "wrap_last_";
+  const INITIALIZED_ATTR = "wrapInitialized";
+  const RESUME_TOAST_THRESHOLD = 2;
 
-        if (!audio || !tracks.length || !playBtn || !nextBtn || !prevBtn) {
-            return;
-        }
+  const toAbsoluteUrl = (() => {
+    const anchor = document.createElement("a");
+    return (url) => {
+      if (!url) {
+        return "";
+      }
+      anchor.href = url;
+      return anchor.href;
+    };
+  })();
 
-        const progress = document.createElement('div');
-        progress.className = 'wrap-progress';
-        const progressBar = document.createElement('div');
-        progressBar.className = 'wrap-progress-bar';
-        progress.appendChild(progressBar);
-        container.appendChild(progress);
+  const storageKeyFor = (playerId) => `${STORAGE_PREFIX}${playerId}`;
 
-        let currentTrack = 0;
-        let isPlaying = false;
+  const storage = {
+    save(playerId, payload) {
+      if (!playerId) {
+        return;
+      }
+      try {
+        localStorage.setItem(storageKeyFor(playerId), JSON.stringify(payload));
+      } catch (error) {
+        // Storage can fail in private mode; ignore silently.
+      }
+    },
+    load(playerId) {
+      if (!playerId) {
+        return null;
+      }
+      try {
+        const raw = localStorage.getItem(storageKeyFor(playerId));
+        return raw ? JSON.parse(raw) : null;
+      } catch (error) {
+        return null;
+      }
+    },
+    clear(playerId) {
+      if (!playerId) {
+        return;
+      }
+      try {
+        localStorage.removeItem(storageKeyFor(playerId));
+      } catch (error) {
+        // Ignore when storage is unavailable.
+      }
+    },
+  };
 
-        function highlightActive(index) {
-            tracks.forEach((track, i) => {
-                track.classList.toggle('active', i === index);
-            });
-        }
+  const clampPercentage = (value) => Math.max(0, Math.min(100, value));
 
-        function resetProgress() {
-            progressBar.style.width = '0%';
-        }
-
-        function loadTrack(index) {
-            const track = tracks[index];
-            if (!track) {
-                return;
-            }
-
-            const url = track.dataset.url;
-            if (!url) {
-                return;
-            }
-
-            audio.src = url;
-            currentTrack = index;
-            highlightActive(index);
-            resetProgress();
-            console.log('Loaded track:', url);
-        }
-
-        function playTrack() {
-            if (!audio.src) {
-                loadTrack(currentTrack);
-            }
-
-            const playPromise = audio.play();
-            if (playPromise && typeof playPromise.then === 'function') {
-                playPromise
-                    .then(() => {
-                        isPlaying = true;
-                        playBtn.textContent = '⏸';
-                    })
-                    .catch((err) => {
-                        console.warn('Audio play error:', err);
-                    });
-            } else {
-                isPlaying = true;
-                playBtn.textContent = '⏸';
-            }
-        }
-
-        function pauseTrack() {
-            audio.pause();
-            isPlaying = false;
-            playBtn.textContent = '▶';
-        }
-
-        function nextTrack() {
-            const nextIndex = (currentTrack + 1) % tracks.length;
-            loadTrack(nextIndex);
-            playTrack();
-        }
-
-        function prevTrack() {
-            const prevIndex = (currentTrack - 1 + tracks.length) % tracks.length;
-            loadTrack(prevIndex);
-            playTrack();
-        }
-
-        playBtn.addEventListener('click', () => {
-            if (!isPlaying) {
-                playTrack();
-            } else {
-                pauseTrack();
-            }
-        });
-
-        nextBtn.addEventListener('click', nextTrack);
-        prevBtn.addEventListener('click', prevTrack);
-
-        tracks.forEach((track, index) => {
-            track.addEventListener('click', () => {
-                currentTrack = index;
-                loadTrack(index);
-                playTrack();
-            });
-        });
-
-        audio.addEventListener('timeupdate', () => {
-            if (!audio.duration || Number.isNaN(audio.duration)) {
-                return;
-            }
-
-            const pct = (audio.currentTime / audio.duration) * 100;
-            progressBar.style.width = `${pct}%`;
-        });
-
-        audio.addEventListener('ended', nextTrack);
-
-        audio.addEventListener('play', () => {
-            isPlaying = true;
-            playBtn.textContent = '⏸';
-        });
-
-        audio.addEventListener('pause', () => {
-            isPlaying = false;
-            playBtn.textContent = '▶';
-        });
-
-        audio.addEventListener('error', () => {
-            const mediaError = audio.error;
-            if (mediaError) {
-                const errorCode = mediaError.code;
-                const errorMap = {
-                    1: 'Aborted',
-                    2: 'Network',
-                    3: 'Decode',
-                    4: 'SrcNotSupported',
-                };
-                const label = errorMap[errorCode] || 'Unknown';
-                console.warn(
-                    'Audio element encountered an error (' +
-                        label +
-                        '). Check audio URL and CORS configuration.',
-                    mediaError
-                );
-            } else {
-                console.warn('Audio element error. Check audio URL and CORS configuration.');
-            }
-        });
-
-        loadTrack(currentTrack);
-        playBtn.textContent = '▶';
+  const showToast = (root, message) => {
+    if (!root) {
+      return;
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('WRAP Player engine initializing...');
-        document
-            .querySelectorAll('.wrap-player-container')
-            .forEach((container) => setupPlayer(container));
+    const previous = root.querySelector(".wrap-toast");
+    if (previous) {
+      previous.remove();
+    }
+
+    const toast = document.createElement("div");
+    toast.className = "wrap-toast";
+    toast.textContent = message;
+    root.appendChild(toast);
+
+    window.setTimeout(() => {
+      toast.remove();
+    }, 2600);
+  };
+
+  const bootstrapPlayers = () => {
+    const players = document.querySelectorAll(PLAYER_SELECTOR);
+    if (!players.length) {
+      return;
+    }
+
+    players.forEach((root) => {
+      if (!(root instanceof HTMLElement)) {
+        return;
+      }
+
+      if (root.dataset[INITIALIZED_ATTR] === "1") {
+        return;
+      }
+
+      const audio = root.querySelector("audio");
+      const trackNodes = Array.from(root.querySelectorAll(".wrap-track-item"));
+
+      if (!(audio instanceof HTMLAudioElement) || !trackNodes.length) {
+        return;
+      }
+
+      root.dataset[INITIALIZED_ATTR] = "1";
+
+      const playerId = root.dataset.playerId || "";
+      const controls = root.querySelector(".wrap-controls");
+      const playBtn = root.querySelector(".wrap-play");
+      const nextBtn = root.querySelector(".wrap-next");
+      const prevBtn = root.querySelector(".wrap-prev");
+
+      const progressWrap = document.createElement("div");
+      progressWrap.className = "wrap-progress";
+      progressWrap.setAttribute("role", "presentation");
+
+      const progressFill = document.createElement("div");
+      progressFill.className = "wrap-progress-bar";
+      progressWrap.appendChild(progressFill);
+
+      if (controls) {
+        controls.insertAdjacentElement("afterend", progressWrap);
+      } else {
+        root.appendChild(progressWrap);
+      }
+
+      let currentIndex = 0;
+
+      const setActiveTrack = (index) => {
+        trackNodes.forEach((node, position) => {
+          node.classList.toggle("active", position === index);
+        });
+      };
+
+      const findIndexByUrl = (url) => {
+        if (!url) {
+          return -1;
+        }
+        const target = toAbsoluteUrl(url);
+        return trackNodes.findIndex((node) => toAbsoluteUrl(node.dataset.url) === target);
+      };
+
+      const updateProgressBar = () => {
+        if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
+          return;
+        }
+        const percentage = (audio.currentTime / audio.duration) * 100;
+        progressFill.style.width = `${clampPercentage(percentage)}%`;
+      };
+
+      const queueTrack = (index, options = {}) => {
+        if (!trackNodes[index]) {
+          return false;
+        }
+
+        const url = trackNodes[index].dataset.url;
+        if (!url) {
+          return false;
+        }
+
+        currentIndex = index;
+        audio.pause();
+
+        const resumeFrom = Number.isFinite(options.resumeFrom) ? options.resumeFrom : null;
+
+        audio.src = url;
+        audio.currentTime = 0;
+        setActiveTrack(index);
+        progressFill.style.width = "0%";
+
+        if (Number.isFinite(resumeFrom) && resumeFrom > 0) {
+          const applyResume = () => {
+            if (audio.duration && resumeFrom < audio.duration) {
+              audio.currentTime = resumeFrom;
+              updateProgressBar();
+            }
+          };
+          audio.addEventListener("loadedmetadata", applyResume, { once: true });
+        }
+
+        return true;
+      };
+
+      const playTrack = () => {
+        audio
+          .play()
+          .catch(() => {
+            // Autoplay or permission block; leave button state unchanged.
+          });
+      };
+
+      const goToNext = () => {
+        const nextIndex = (currentIndex + 1) % trackNodes.length;
+        if (queueTrack(nextIndex)) {
+          playTrack();
+        }
+      };
+
+      const goToPrev = () => {
+        const prevIndex = (currentIndex - 1 + trackNodes.length) % trackNodes.length;
+        if (queueTrack(prevIndex)) {
+          playTrack();
+        }
+      };
+
+      if (playBtn) {
+        playBtn.addEventListener("click", () => {
+          if (audio.paused) {
+            playTrack();
+          } else {
+            audio.pause();
+          }
+        });
+      }
+
+      if (nextBtn) {
+        nextBtn.addEventListener("click", goToNext);
+      }
+
+      if (prevBtn) {
+        prevBtn.addEventListener("click", goToPrev);
+      }
+
+      trackNodes.forEach((node, index) => {
+        node.addEventListener("click", () => {
+          if (queueTrack(index)) {
+            playTrack();
+          }
+        });
+      });
+
+      progressWrap.addEventListener("click", (event) => {
+        if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
+          return;
+        }
+        const rect = progressWrap.getBoundingClientRect();
+        if (!rect.width) {
+          return;
+        }
+        const ratio = (event.clientX - rect.left) / rect.width;
+        const clampedRatio = Math.max(0, Math.min(1, ratio));
+        const nextTime = clampedRatio * audio.duration;
+        audio.currentTime = nextTime;
+        updateProgressBar();
+      });
+
+      audio.addEventListener("play", () => {
+        if (playBtn) {
+          playBtn.textContent = "⏸";
+        }
+      });
+
+      audio.addEventListener("pause", () => {
+        if (playBtn) {
+          playBtn.textContent = "▶";
+        }
+      });
+
+      audio.addEventListener("timeupdate", () => {
+        if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
+          return;
+        }
+
+        updateProgressBar();
+
+        const src = audio.currentSrc || audio.src;
+        if (src) {
+          storage.save(playerId, {
+            src,
+            time: audio.currentTime,
+          });
+        }
+      });
+
+      audio.addEventListener("seeked", updateProgressBar);
+
+      audio.addEventListener("loadedmetadata", () => {
+        if (audio.currentTime > 0) {
+          updateProgressBar();
+        }
+      });
+
+      audio.addEventListener("ended", () => {
+        storage.clear(playerId);
+        progressFill.style.width = "0%";
+        goToNext();
+      });
+
+      audio.addEventListener("emptied", () => {
+        progressFill.style.width = "0%";
+      });
+
+      audio.addEventListener("error", () => {
+        storage.clear(playerId);
+        progressFill.style.width = "0%";
+      });
+
+      const saved = storage.load(playerId);
+      if (saved && saved.src) {
+        const savedIndex = findIndexByUrl(saved.src);
+        const resumeTime = Number(saved.time);
+        if (savedIndex !== -1) {
+          const resumeFrom = Number.isFinite(resumeTime) ? resumeTime : null;
+          queueTrack(savedIndex, { resumeFrom });
+          if (Number.isFinite(resumeTime) && resumeTime > RESUME_TOAST_THRESHOLD) {
+            showToast(root, "Continuing from last position...");
+          }
+        } else {
+          storage.clear(playerId);
+          queueTrack(0);
+        }
+      } else {
+        queueTrack(0);
+      }
     });
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootstrapPlayers);
+  } else {
+    bootstrapPlayers();
+  }
+
+  if (typeof window !== "undefined") {
+    window.WRAP = window.WRAP || {};
+    window.WRAP.bootstrapPlayers = bootstrapPlayers;
+  }
 })();
