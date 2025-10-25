@@ -36,5 +36,17 @@ class WRAP_CPT {
         );
 
         register_post_type( 'wrap_player', $args );
+
+        // === Shortcode column ===
+        add_filter( 'manage_edit-wrap_player_columns', function( $columns ) {
+            $columns['shortcode'] = __( 'Shortcode', 'wrap' );
+            return $columns;
+        } );
+
+        add_action( 'manage_wrap_player_posts_custom_column', function( $column, $post_id ) {
+            if ( $column === 'shortcode' ) {
+                echo '<code>[wrap_player id="' . esc_attr( $post_id ) . '"]</code>';
+            }
+        }, 10, 2 );
     }
 }

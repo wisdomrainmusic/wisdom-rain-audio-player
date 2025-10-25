@@ -103,18 +103,29 @@
       const nextBtn = root.querySelector(".wrap-next");
       const prevBtn = root.querySelector(".wrap-prev");
 
-      const progressWrap = document.createElement("div");
-      progressWrap.className = "wrap-progress";
-      progressWrap.setAttribute("role", "presentation");
+      let progressWrap = root.querySelector(".wrap-player-progress");
+      let progressFill = progressWrap ? progressWrap.querySelector("span") : null;
 
-      const progressFill = document.createElement("div");
-      progressFill.className = "wrap-progress-bar";
-      progressWrap.appendChild(progressFill);
+      if (!progressWrap) {
+        progressWrap = document.createElement("div");
+        progressWrap.className = "wrap-player-progress";
+        progressWrap.setAttribute("role", "presentation");
 
-      if (controls) {
-        controls.insertAdjacentElement("afterend", progressWrap);
-      } else {
-        root.appendChild(progressWrap);
+        progressFill = document.createElement("span");
+        progressWrap.appendChild(progressFill);
+
+        if (controls) {
+          controls.insertAdjacentElement("afterend", progressWrap);
+        } else {
+          root.appendChild(progressWrap);
+        }
+      } else if (!progressFill) {
+        progressFill = document.createElement("span");
+        progressWrap.appendChild(progressFill);
+      }
+
+      if (progressWrap && !progressWrap.hasAttribute("role")) {
+        progressWrap.setAttribute("role", "presentation");
       }
 
       let currentIndex = 0;
@@ -134,6 +145,10 @@
       };
 
       const updateProgressBar = () => {
+        if (!progressFill) {
+          return;
+        }
+
         if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
           return;
         }
@@ -159,7 +174,9 @@
         audio.src = url;
         audio.currentTime = 0;
         setActiveTrack(index);
-        progressFill.style.width = "0%";
+        if (progressFill) {
+          progressFill.style.width = "0%";
+        }
 
         if (Number.isFinite(resumeFrom) && resumeFrom > 0) {
           const applyResume = () => {
@@ -222,20 +239,22 @@
         });
       });
 
-      progressWrap.addEventListener("click", (event) => {
-        if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
-          return;
-        }
-        const rect = progressWrap.getBoundingClientRect();
-        if (!rect.width) {
-          return;
-        }
-        const ratio = (event.clientX - rect.left) / rect.width;
-        const clampedRatio = Math.max(0, Math.min(1, ratio));
-        const nextTime = clampedRatio * audio.duration;
-        audio.currentTime = nextTime;
-        updateProgressBar();
-      });
+      if (progressWrap) {
+        progressWrap.addEventListener("click", (event) => {
+          if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
+            return;
+          }
+          const rect = progressWrap.getBoundingClientRect();
+          if (!rect.width) {
+            return;
+          }
+          const ratio = (event.clientX - rect.left) / rect.width;
+          const clampedRatio = Math.max(0, Math.min(1, ratio));
+          const nextTime = clampedRatio * audio.duration;
+          audio.currentTime = nextTime;
+          updateProgressBar();
+        });
+      }
 
       audio.addEventListener("play", () => {
         if (playBtn) {
@@ -275,17 +294,23 @@
 
       audio.addEventListener("ended", () => {
         storage.clear(playerId);
-        progressFill.style.width = "0%";
+        if (progressFill) {
+          progressFill.style.width = "0%";
+        }
         goToNext();
       });
 
       audio.addEventListener("emptied", () => {
-        progressFill.style.width = "0%";
+        if (progressFill) {
+          progressFill.style.width = "0%";
+        }
       });
 
       audio.addEventListener("error", () => {
         storage.clear(playerId);
-        progressFill.style.width = "0%";
+        if (progressFill) {
+          progressFill.style.width = "0%";
+        }
       });
 
       const saved = storage.load(playerId);
