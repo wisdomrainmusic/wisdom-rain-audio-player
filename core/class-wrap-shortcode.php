@@ -56,6 +56,9 @@ class WRAP_Shortcode {
              data-player-id="<?php echo esc_attr( $post_id ); ?>">
 
             <div class="wrap-player-header">
+                <?php if ( has_post_thumbnail( $post_id ) ) : ?>
+                    <img src="<?php echo esc_url( get_the_post_thumbnail_url( $post_id, 'medium' ) ); ?>" alt="">
+                <?php endif; ?>
                 <h3 class="wrap-player-title"><?php echo esc_html( get_the_title( $post_id ) ); ?></h3>
             </div>
 
