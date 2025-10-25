@@ -65,7 +65,7 @@ class WRAP_Shortcode {
                          data-index="<?php echo esc_attr( $track['index'] ); ?>"
                          data-url="<?php echo esc_url( $track['url'] ); ?>">
                         <span class="wrap-track-title">
-                            <button type="button" class="wrap-inline-play" aria-label="<?php esc_attr_e( 'Play track', 'wrap' ); ?>"></button>
+                            <button type="button" class="wrap-inline-play" aria-label="<?php esc_attr_e( 'Play track', 'wrap' ); ?>">▶</button>
                             <span class="wrap-track-name"><?php echo esc_html( $track['title'] ); ?></span>
                         </span>
                         <?php if ( '' !== $track['duration'] ) : ?>
@@ -80,6 +80,12 @@ class WRAP_Shortcode {
                 <button class="wrap-play" type="button" aria-label="<?php esc_attr_e( 'Play or pause', 'wrap' ); ?>">▶</button>
                 <button class="wrap-next" type="button" aria-label="<?php esc_attr_e( 'Next track', 'wrap' ); ?>">⏭</button>
             </div>
+
+            <div class="wrap-player-progress" aria-hidden="true">
+                <span></span>
+            </div>
+
+            <div class="wrap-player-time">00:00 / --:--</div>
 
             <audio preload="metadata" class="wrap-audio" style="display:none;"></audio>
         </div>
