@@ -116,21 +116,21 @@ class WRAP_Shortcode {
 
         ob_start();
         ?>
-        <div class="wrap-player-container wrap-playlist-container" data-player-id="<?php echo esc_attr( $post_id ); ?>">
+        <div class="wrap-player-container" data-player-id="<?php echo esc_attr( $post_id ); ?>">
 
             <div class="wrap-player-header">
                 <?php if ( has_post_thumbnail( $post_id ) ) : ?>
                     <img src="<?php echo esc_url( get_the_post_thumbnail_url( $post_id, 'medium' ) ); ?>" alt="">
                 <?php endif; ?>
-                <h3 class="wrap-player-title"><?php echo esc_html( get_the_title( $post_id ) ); ?></h3>
+                <h3><?php echo esc_html( get_the_title( $post_id ) ); ?></h3>
             </div>
 
-            <ul class="wrap-player-tracklist wrap-tracks">
+            <ul class="wrap-player-tracklist">
                 <?php foreach ( $prepared_tracks as $track ) : ?>
-                    <li class="wrap-track-item wrap-track"
+                    <li class="wrap-track-item"
                         data-url="<?php echo esc_url( $track['url'] ); ?>"
                         data-index="<?php echo esc_attr( $track['index'] ); ?>">
-                        <span class="wrap-track-title wrap-track-name"><?php echo esc_html( $track['title'] ); ?></span>
+                        <span class="wrap-track-title"><?php echo esc_html( $track['title'] ); ?></span>
                         <?php if ( '' !== $track['duration'] ) : ?>
                             <span class="wrap-track-duration"><?php echo esc_html( $track['duration'] ); ?></span>
                         <?php endif; ?>
@@ -144,8 +144,7 @@ class WRAP_Shortcode {
                 <button class="wrap-next" type="button" aria-label="<?php esc_attr_e( 'Next track', 'wrap' ); ?>">⏭</button>
             </div>
 
-            <div class="wrap-progress wrap-player-progress" role="presentation"><div class="wrap-progress-bar"></div></div>
-            <div class="wrap-player-time">00:00 / --:--</div>
+            <div class="wrap-progress"><div class="wrap-progress-bar"></div></div>
             <audio preload="metadata" class="wrap-audio"></audio>
         </div>
         <?php
