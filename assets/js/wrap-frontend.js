@@ -103,15 +103,15 @@
       const nextBtn = root.querySelector(".wrap-next");
       const prevBtn = root.querySelector(".wrap-prev");
 
-      let progressWrap = root.querySelector(".wrap-progress, .wrap-player-progress");
-      let progressFill = progressWrap ? progressWrap.querySelector(".wrap-progress-bar") : null;
+      let progressWrap = root.querySelector(".wrap-player-progress");
+      let progressFill = progressWrap ? progressWrap.querySelector("span") : null;
 
       if (!progressWrap) {
         progressWrap = document.createElement("div");
-        progressWrap.className = "wrap-progress wrap-player-progress";
+        progressWrap.className = "wrap-player-progress";
         progressWrap.setAttribute("role", "presentation");
 
-        progressFill = document.createElement("div");
+        progressFill = document.createElement("span");
         progressWrap.appendChild(progressFill);
 
         if (controls) {
@@ -119,28 +119,13 @@
         } else {
           root.appendChild(progressWrap);
         }
-      } else {
-        if (!progressWrap.classList.contains("wrap-progress")) {
-          progressWrap.classList.add("wrap-progress");
-        }
-        if (!progressWrap.classList.contains("wrap-player-progress")) {
-          progressWrap.classList.add("wrap-player-progress");
-        }
-        if (!progressWrap.hasAttribute("role")) {
-          progressWrap.setAttribute("role", "presentation");
-        }
-
-        if (!progressFill) {
-          progressFill = progressWrap.querySelector("span, div");
-        }
-        if (!progressFill) {
-          progressFill = document.createElement("div");
-          progressWrap.appendChild(progressFill);
-        }
+      } else if (!progressFill) {
+        progressFill = document.createElement("span");
+        progressWrap.appendChild(progressFill);
       }
 
-      if (progressFill && !progressFill.classList.contains("wrap-progress-bar")) {
-        progressFill.classList.add("wrap-progress-bar");
+      if (progressWrap && !progressWrap.hasAttribute("role")) {
+        progressWrap.setAttribute("role", "presentation");
       }
 
       let currentIndex = 0;
