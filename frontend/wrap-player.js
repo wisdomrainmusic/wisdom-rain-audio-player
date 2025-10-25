@@ -53,6 +53,18 @@
 
   const clampPercentage = (value) => Math.max(0, Math.min(100, value));
 
+  const formatTime = (value, fallback = "--:--") => {
+    if (!Number.isFinite(value) || value < 0) {
+      return fallback;
+    }
+
+    const totalSeconds = Math.floor(value);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  };
+
   const showToast = (root, message) => {
     if (!root) {
       return;
@@ -103,19 +115,26 @@
       const nextBtn = root.querySelector(".wrap-next");
       const prevBtn = root.querySelector(".wrap-prev");
 
-      const progressWrap = document.createElement("div");
-      progressWrap.className = "wrap-progress";
-      progressWrap.setAttribute("role", "presentation");
+      let progressWrap = root.querySelector(".wrap-player-progress");
+      if (!progressWrap) {
+        progressWrap = document.createElement("div");
+        progressWrap.className = "wrap-player-progress";
+        progressWrap.setAttribute("role", "presentation");
 
-      const progressFill = document.createElement("div");
-      progressFill.className = "wrap-progress-bar";
-      progressWrap.appendChild(progressFill);
-
-      if (controls) {
-        controls.insertAdjacentElement("afterend", progressWrap);
-      } else {
-        root.appendChild(progressWrap);
+        if (controls) {
+          controls.insertAdjacentElement("afterend", progressWrap);
+        } else {
+          root.appendChild(progressWrap);
+        }
       }
+
+      let progressFill = progressWrap.querySelector("span");
+      if (!progressFill) {
+        progressFill = document.createElement("span");
+        progressWrap.appendChild(progressFill);
+      }
+
+      const timeDisplay = root.querySelector(".wrap-player-time");
 
       let currentIndex = 0;
 
@@ -133,12 +152,36 @@
         return trackNodes.findIndex((node) => toAbsoluteUrl(node.dataset.url) === target);
       };
 
-      const updateProgressBar = () => {
-        if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
+      const syncProgressFill = () => {
+        if (!progressFill) {
           return;
         }
+
+        if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
+          progressFill.style.width = "0%";
+          return;
+        }
+
         const percentage = (audio.currentTime / audio.duration) * 100;
         progressFill.style.width = `${clampPercentage(percentage)}%`;
+      };
+
+      const syncTimeDisplay = () => {
+        if (!timeDisplay) {
+          return;
+        }
+
+        const currentText = formatTime(audio.currentTime, "00:00");
+        const durationText = Number.isFinite(audio.duration) && audio.duration > 0
+          ? formatTime(audio.duration)
+          : "--:--";
+
+        timeDisplay.textContent = `${currentText} / ${durationText}`;
+      };
+
+      const updatePlaybackUi = () => {
+        syncProgressFill();
+        syncTimeDisplay();
       };
 
       const queueTrack = (index, options = {}) => {
@@ -159,13 +202,16 @@
         audio.src = url;
         audio.currentTime = 0;
         setActiveTrack(index);
-        progressFill.style.width = "0%";
+        if (progressFill) {
+          progressFill.style.width = "0%";
+        }
+        syncTimeDisplay();
 
         if (Number.isFinite(resumeFrom) && resumeFrom > 0) {
           const applyResume = () => {
             if (audio.duration && resumeFrom < audio.duration) {
               audio.currentTime = resumeFrom;
-              updateProgressBar();
+              updatePlaybackUi();
             }
           };
           audio.addEventListener("loadedmetadata", applyResume, { once: true });
@@ -222,20 +268,22 @@
         });
       });
 
-      progressWrap.addEventListener("click", (event) => {
-        if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
-          return;
-        }
-        const rect = progressWrap.getBoundingClientRect();
-        if (!rect.width) {
-          return;
-        }
-        const ratio = (event.clientX - rect.left) / rect.width;
-        const clampedRatio = Math.max(0, Math.min(1, ratio));
-        const nextTime = clampedRatio * audio.duration;
-        audio.currentTime = nextTime;
-        updateProgressBar();
-      });
+      if (progressWrap) {
+        progressWrap.addEventListener("click", (event) => {
+          if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
+            return;
+          }
+          const rect = progressWrap.getBoundingClientRect();
+          if (!rect.width) {
+            return;
+          }
+          const ratio = (event.clientX - rect.left) / rect.width;
+          const clampedRatio = Math.max(0, Math.min(1, ratio));
+          const nextTime = clampedRatio * audio.duration;
+          audio.currentTime = nextTime;
+          updatePlaybackUi();
+        });
+      }
 
       audio.addEventListener("play", () => {
         if (playBtn) {
@@ -250,11 +298,7 @@
       });
 
       audio.addEventListener("timeupdate", () => {
-        if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
-          return;
-        }
-
-        updateProgressBar();
+        updatePlaybackUi();
 
         const src = audio.currentSrc || audio.src;
         if (src) {
@@ -265,27 +309,34 @@
         }
       });
 
-      audio.addEventListener("seeked", updateProgressBar);
+      audio.addEventListener("seeked", updatePlaybackUi);
 
       audio.addEventListener("loadedmetadata", () => {
-        if (audio.currentTime > 0) {
-          updateProgressBar();
-        }
+        updatePlaybackUi();
       });
 
       audio.addEventListener("ended", () => {
         storage.clear(playerId);
-        progressFill.style.width = "0%";
+        if (progressFill) {
+          progressFill.style.width = "0%";
+        }
+        syncTimeDisplay();
         goToNext();
       });
 
       audio.addEventListener("emptied", () => {
-        progressFill.style.width = "0%";
+        if (progressFill) {
+          progressFill.style.width = "0%";
+        }
+        syncTimeDisplay();
       });
 
       audio.addEventListener("error", () => {
         storage.clear(playerId);
-        progressFill.style.width = "0%";
+        if (progressFill) {
+          progressFill.style.width = "0%";
+        }
+        syncTimeDisplay();
       });
 
       const saved = storage.load(playerId);
@@ -305,6 +356,8 @@
       } else {
         queueTrack(0);
       }
+
+      updatePlaybackUi();
     });
   };
 
