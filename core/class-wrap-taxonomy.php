@@ -28,6 +28,7 @@ class WRAP_Taxonomy {
             'labels'            => $labels,
             'show_ui'           => true,
             'show_admin_column' => true,
+            'show_in_menu'      => 'edit.php?post_type=wrap_player',
             'query_var'         => true,
             'rewrite'           => array( 'slug' => 'wrap-language' ),
         );

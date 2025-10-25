@@ -115,10 +115,10 @@
       const nextBtn = root.querySelector(".wrap-next");
       const prevBtn = root.querySelector(".wrap-prev");
 
-      let progressWrap = root.querySelector(".wrap-player-progress");
+      let progressWrap = root.querySelector(".wrap-progress, .wrap-player-progress");
       if (!progressWrap) {
         progressWrap = document.createElement("div");
-        progressWrap.className = "wrap-player-progress";
+        progressWrap.className = "wrap-progress wrap-player-progress";
         progressWrap.setAttribute("role", "presentation");
 
         if (controls) {
@@ -126,15 +126,40 @@
         } else {
           root.appendChild(progressWrap);
         }
+      } else {
+        if (!progressWrap.classList.contains("wrap-progress")) {
+          progressWrap.classList.add("wrap-progress");
+        }
+        if (!progressWrap.classList.contains("wrap-player-progress")) {
+          progressWrap.classList.add("wrap-player-progress");
+        }
+        if (!progressWrap.hasAttribute("role")) {
+          progressWrap.setAttribute("role", "presentation");
+        }
       }
 
-      let progressFill = progressWrap.querySelector("span");
+      let progressFill = progressWrap.querySelector(".wrap-progress-bar");
       if (!progressFill) {
-        progressFill = document.createElement("span");
+        progressFill = progressWrap.querySelector("span, div");
+      }
+      if (!progressFill) {
+        progressFill = document.createElement("div");
         progressWrap.appendChild(progressFill);
       }
 
-      const timeDisplay = root.querySelector(".wrap-player-time");
+      progressFill.classList.add("wrap-progress-bar");
+
+      let timeDisplay = root.querySelector(".wrap-player-time");
+      if (!timeDisplay) {
+        timeDisplay = document.createElement("div");
+        timeDisplay.className = "wrap-player-time";
+        timeDisplay.textContent = "00:00 / --:--";
+        if (progressWrap && progressWrap.parentNode) {
+          progressWrap.insertAdjacentElement("afterend", timeDisplay);
+        } else {
+          root.appendChild(timeDisplay);
+        }
+      }
 
       let currentIndex = 0;
 
