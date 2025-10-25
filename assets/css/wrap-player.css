@@ -1,0 +1,5 @@
+.wrap-track-item.active,
+.wrap-track-item[style*="#ffecec"] {
+  background: #ffecec !important;
+  border: 1px solid #e53935;
+}
