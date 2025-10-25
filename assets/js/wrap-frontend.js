@@ -96,6 +96,7 @@
       }
 
       root.dataset[INITIALIZED_ATTR] = "1";
+      console.log("WRAP player initialized successfully");
 
       const playerId = root.dataset.playerId || "";
       const controls = root.querySelector(".wrap-controls");
